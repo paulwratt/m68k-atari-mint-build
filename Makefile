@@ -7,45 +7,127 @@
 
 TARGET			= m68k-atari-mint
 
-PATCH_BINUTILS		= 20160320
-PATCH_GCC		= 20130415
-PATCH_PML		= 20110207
-
 VERSION_BINUTILS	= 2.26
 VERSION_GCC		= 4.6.4
 
-VERSION_GMP		= 6.1.1
-VERSION_MPFR		= 3.1.5
-VERSION_MPC		= 1.0.3
+# todo: nejako detekovat zmenu platformy... pri gcc/binutils touch ${TARGET}_source.ok a ak sa nenachadza, tak rm -rf
+# detekovat, ci je platforma dobre definovana (na targets?)
 
-VERSION_PML		= 2.03
-VERSION_MINTLIB		:= $(shell date +"%Y%m%d")
-VERSION_MINTBIN		= 20110527
+# each platform target has to provide:
+# ${TARGET}-binutils-${VERSION_BINUTILS}-{download_patch, apply_patch}
+# ${TARGET}-gcc-${VERSION_GCC}-{download_patch, apply_patch}
+# ${TARGET}-{libc, libm}-{download, build}
 
-SH      = $(shell which sh)
-BASH    = $(shell which bash)
-URLGET	= $(shell which wget || echo "`which curl` -O")
+#################
+# m68k-atari-mint
+#################
 
-# set to something like "> /dev/null" or ">> /tmp/mint-build.log"
-# to redirect compilation standard output
-OUT =
+M68K_ATARI_MINT_PATCH_BINUTILS	= 20160320
+M68K_ATARI_MINT_PATCH_GCC	= 20130415
+M68K_ATARI_MINT_PATCH_PML	= 20110207
 
-DOWNLOADS_COMMON = binutils-${VERSION_BINUTILS}.tar.bz2 \
-		   gcc-${VERSION_GCC}.tar.bz2 \
-		   binutils-${VERSION_BINUTILS}-mint-${PATCH_BINUTILS}.patch.bz2 \
-		   gcc-${VERSION_GCC}-mint-${PATCH_GCC}.patch.bz2
+M68K_ATARI_MINT_VERSION_PML	= 2.03
+M68K_ATARI_MINT_VERSION_MINTLIB	:= $(shell date +"%Y%m%d")
+M68K_ATARI_MINT_VERSION_MINTBIN	= 20110527
 
-DOWNLOADS_CROSS  = $(DOWNLOADS_COMMON) \
-		   pml-${VERSION_PML}.tar.bz2 \
-		   mintbin-CVS-${VERSION_MINTBIN}.tar.gz \
-		   pml-${VERSION_PML}-mint-${PATCH_PML}.patch.bz2
+# helper targets
 
-DOWNLOADS_NATIVE = $(DOWNLOADS_COMMON) \
-		   gmp-${VERSION_GMP}.tar.lz \
-		   mpfr-${VERSION_MPFR}.tar.bz2 \
-		   mpc-${VERSION_MPC}.tar.gz
+ach dopekla, target je target/xxx ale my sa odkazujeme na $@
+${TARGET}/binutils-${VERSION_BINUTILS}-mint-${M68K_ATARI_MINT_PATCH_BINUTILS}.patch.bz2: ${TARGET}
+	cd ${TARGET} && \
+	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$@
 
-DOWNLOADS_ALL	 = $(DOWNLOADS_CROSS) $(DOWNLOADS_NATIVE)
+${TARGET}/gcc-${VERSION_GCC}-mint-${M68K_ATARI_MINT_PATCH_GCC}.patch.bz2: ${TARGET}
+	cd ${TARGET} && \
+	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$@
+
+${TARGET}/pml-${VERSION_PML}.tar.bz2: ${TARGET}
+	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$@
+
+${TARGET}/mintbin-CVS-${VERSION_MINTBIN}.tar.gz: ${TARGET}
+	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$@
+
+
+
+${TARGET}/mintlib-CVS-${M68K_ATARI_MINT_VERSION_MINTLIB}.ok: mintlib.patch
+	rm -rf $@ ${TARGET}/mintlib-CVS-${M68K_ATARI_MINT_VERSION_MINTLIB}
+	cd ${TARGET} && \
+	CVSROOT=:pserver:cvsanon:cvsanon@sparemint.org:/mint cvs checkout -d mintlib-CVS-${VERSION_MINTLIB} mintlib $(OUT)
+	cd ${TARGET}/mintlib-CVS-${M68K_ATARI_MINT_VERSION_MINTLIB} && patch -p1 < ../../mintlib.patch
+	touch $@
+
+${TARGET}/mintbin-CVS-${M68K_ATARI_MINT_VERSION_MINTBIN}.ok: mintbin-CVS-${M68K_ATARI_MINT_VERSION_MINTBIN}.tar.gz mintbin.patch
+	rm -rf $@ ${TARGET}/mintbin-CVS-${M68K_ATARI_MINT_VERSION_MINTBIN}
+	cd ${TARGET} && \
+	tar xzf xxxxxxxmintbin-CVS-${M68K_ATARI_MINT_VERSION_MINTBIN}.tar.gz
+	cd ${TARGET}/mintbin-CVS-${M68K_ATARI_MINT_VERSION_MINTBIN} && patch -p1 < ../mintbin.patch
+	touch $@
+
+${TARGET}/pml-${VERSION_PML}.ok: pml-${VERSION_PML}.tar.bz2 pml-${VERSION_PML}-mint-${PATCH_PML}.patch.bz2 pml-${VERSION_PML}-mint-${PATCH_PML}.patch.bz2
+	rm -rf pml-${VERSION_PML} $@
+	tar xjf pml-${VERSION_PML}.tar.bz2
+	cd pml-${VERSION_PML} && bzcat ../pml-${VERSION_PML}-mint-${PATCH_PML}.patch.bz2 | patch -p1
+	cd pml-${VERSION_PML} && cat ../pml.patch | patch -p1
+	touch $@
+
+# main targets
+
+m68k-atari-mint-binutils-${VERSION_BINUTILS}-download_patch: ${TARGET}/binutils-${VERSION_BINUTILS}-mint-${M68K_ATARI_MINT_PATCH_BINUTILS}.patch.bz2
+
+m68k-atari-mint-binutils-${VERSION_BINUTILS}-apply_patch: m68k-atari-mint-binutils-${VERSION_BINUTILS}-download_patch binutils-{VERSION_BINUTILS}.${TARGET}_source_ok
+	cd binutils-${VERSION_BINUTILS} && bzcat ../${TARGET}/binutils-${VERSION_BINUTILS}-mint-${M68K_ATARI_MINT_PATCH_BINUTILS}.patch.bz2 | patch -p1
+	touch binutils-${VERSION_BINUTILS}.${TARGET}_patch_ok
+
+m68k-atari-mint-gcc-${VERSION_GCC}-download_patch: ${TARGET}/gcc-${VERSION_GCC}-mint-${M68K_ATARI_MINT_PATCH_GCC}.patch.bz2
+
+m68k-atari-mint-gcc-${VERSION_GCC}-apply_patch: m68k-atari-mint-gcc-${VERSION_GCC}-download_patch gcc-${VERSION_GCC}.${TARGET}_source_ok
+	cd gcc-${VERSION_GCC} && patch -p1 < ../gcc.patch
+	cd gcc-${VERSION_GCC} && bzcat ../${TARGET}/gcc-${VERSION_GCC}-mint-${M68K_ATARI_MINT_PATCH_GCC}.patch.bz2 | patch -p1
+	touch gcc-${VERSION_GCC}.${TARGET}_patch_ok
+
+m68k-atari-mint-libc-download: ${TARGET}/mintlib-CVS-${M68K_ATARI_MINT_VERSION_MINTLIB}.ok
+m68k-atari-mint-libc-build:
+libc.m68k-atari-mint_ok:
+
+
+m68k-atari-mint-libm-download:
+m68k-atari-mint-libm-build:
+libm.m68k-atari-mint_ok:
+
+
+
+
+pml-${VERSION_PML}-mint-${PATCH_PML}.patch.bz2:
+	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$@
+
+
+
+	binutils-${VERSION_BINUTILS}.ok: binutils-${VERSION_BINUTILS}.tar.bz2 binutils-${VERSION_BINUTILS}-mint-${PATCH_BINUTILS}.patch.bz2
+	rm -rf binutils-${VERSION_BINUTILS} $@
+	tar xjf binutils-${VERSION_BINUTILS}.tar.bz2
+	cd binutils-${VERSION_BINUTILS} && bzcat ../binutils-${VERSION_BINUTILS}-mint-${PATCH_BINUTILS}.patch.bz2 | patch -p1
+	touch $@
+
+
+
+
+
+{TARGET}:
+	mkdir -p $@
+
+
+
+
+# m68k-atari-linux-elf
+
+
+DOWNLOADS = binutils-${VERSION_BINUTILS}.tar.bz2 gcc-${VERSION_GCC}.tar.bz2 \
+	    binutils-${VERSION_BINUTILS}-mint-${PATCH_BINUTILS}.patch.bz2 \
+	    gcc-${VERSION_GCC}-mint-${PATCH_GCC}.patch.bz2 \
+
+${TARGET}-DOWNLOADS:
+	pml-${VERSION_PML}.tar.bz2 mintbin-CVS-${VERSION_MINTBIN}.tar.gz \
+	pml-${VERSION_PML}-mint-${PATCH_PML}.patch.bz2
 
 .PHONY: help download clean \
 	clean-all       clean-all-skip-native       clean-native           all       all-skip-native       all-native \
@@ -150,31 +232,6 @@ binutils-${VERSION_BINUTILS}.tar.bz2:
 gcc-${VERSION_GCC}.tar.bz2:
 	$(URLGET) http://ftp.gnu.org/gnu/gcc/gcc-${VERSION_GCC}/$@
 
-gmp-${VERSION_GMP}.tar.lz:
-	$(URLGET) https://gmplib.org/download/gmp/$@
-
-mpfr-${VERSION_MPFR}.tar.bz2:
-	$(URLGET) http://www.mpfr.org/mpfr-current/$@
-
-mpc-${VERSION_MPC}.tar.gz:
-	$(URLGET) http://www.multiprecision.org/mpc/download/$@
-
-pml-${VERSION_PML}.tar.bz2:
-	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$@
-
-mintbin-CVS-${VERSION_MINTBIN}.tar.gz:
-	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$@
-
-# Download ${TARGET}-specific patches
-
-binutils-${VERSION_BINUTILS}-mint-${PATCH_BINUTILS}.patch.bz2:
-	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$@
-
-gcc-${VERSION_GCC}-mint-${PATCH_GCC}.patch.bz2:
-	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$@
-
-pml-${VERSION_PML}-mint-${PATCH_PML}.patch.bz2:
-	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$@
 
 # Target definitions for every new platform (m68k-linux-gnu for instance)
 # right now we don't support building of more than one targets in one go so don't forget 'make clean-source'
@@ -187,13 +244,6 @@ binutils-m68k-atari-mint: binutils-${VERSION_BINUTILS}.ok
 gcc-m68k-atari-mint: gcc-${VERSION_GCC}.ok
 
 libc-m68k-atari-mint: pml-${VERSION_PML}.ok mintbin-CVS-${VERSION_MINTBIN}.ok mintlib-CVS-${VERSION_MINTLIB}.ok
-
-gmp-m68k-atari-mint: gmp-${VERSION_GMP}.ok
-	# nothing else to do
-mpfr-m68k-atari-mint: mpfr-${VERSION_MPFR}.ok
-	# nothing else to do
-mpc-m68k-atari-mint: mpc-${VERSION_MPC}.ok
-	# nothing else to do
 
 # Depacking and patching
 
@@ -208,40 +258,6 @@ gcc-${VERSION_GCC}.ok: gcc-${VERSION_GCC}.tar.bz2 gcc.patch gcc-${VERSION_GCC}-m
 	tar xjf gcc-${VERSION_GCC}.tar.bz2
 	cd gcc-${VERSION_GCC} && patch -p1 < ../gcc.patch
 	cd gcc-${VERSION_GCC} && bzcat ../gcc-${VERSION_GCC}-mint-${PATCH_GCC}.patch.bz2 | patch -p1
-	touch $@
-
-gmp-${VERSION_GMP}.ok: gmp-${VERSION_GMP}.tar.lz
-	rm -rf gmp-${VERSION_GMP}.ok $@
-	tar --extract --lzip --file gmp-${VERSION_GMP}.tar.lz
-	touch $@
-
-mpfr-${VERSION_MPFR}.ok: mpfr-${VERSION_MPFR}.tar.bz2
-	rm -rf mpfr-${VERSION_MPFR} $@
-	tar xjf mpfr-${VERSION_MPFR}.tar.bz2
-	touch $@
-
-mpc-${VERSION_MPC}.ok: mpc-${VERSION_MPC}.tar.gz
-	rm -rf mpc-${VERSION_MPC} $@.patched
-	tar xzf mpc-${VERSION_MPC}.tar.gz
-	touch $@
-
-mintlib-CVS-${VERSION_MINTLIB}.ok:	mintlib.patch
-	rm -rf $@ mintlib-CVS-${VERSION_MINTLIB}
-	CVSROOT=:pserver:cvsanon:cvsanon@sparemint.org:/mint cvs checkout -d mintlib-CVS-${VERSION_MINTLIB} mintlib $(OUT)
-	cd mintlib-CVS-${VERSION_MINTLIB} && patch -p1 < ../mintlib.patch
-	touch $@
-
-mintbin-CVS-${VERSION_MINTBIN}.ok: mintbin-CVS-${VERSION_MINTBIN}.tar.gz mintbin.patch
-	rm -rf $@ mintbin-CVS-${VERSION_MINTBIN}
-	tar xzf mintbin-CVS-${VERSION_MINTBIN}.tar.gz
-	cd mintbin-CVS-${VERSION_MINTBIN} && patch -p1 < ../mintbin.patch
-	touch $@
-
-pml-${VERSION_PML}.ok: pml-${VERSION_PML}.tar.bz2 pml-${VERSION_PML}-mint-${PATCH_PML}.patch.bz2 pml-${VERSION_PML}-mint-${PATCH_PML}.patch.bz2
-	rm -rf pml-${VERSION_PML} $@
-	tar xjf pml-${VERSION_PML}.tar.bz2
-	cd pml-${VERSION_PML} && bzcat ../pml-${VERSION_PML}-mint-${PATCH_PML}.patch.bz2 | patch -p1
-	cd pml-${VERSION_PML} && cat ../pml.patch | patch -p1
 	touch $@
 
 # Building
@@ -335,36 +351,6 @@ binutils-${VERSION_BINUTILS}-${CPU}-atari: binutils-${TARGET}
 
 binutils-atari: binutils-${VERSION_BINUTILS}-${CPU}-atari
 
-gmp-${VERSION_GMP}-${CPU}-atari: gmp-${TARGET}
-	mkdir -p $@
-	cd $@ && \
-	export PATH=${INSTALL_DIR}/bin:$$PATH && \
-	../gmp-${VERSION_GMP}/configure $(ASSEMBLY) --host=${TARGET} --prefix=${PWD}/binary-package/${CPU}/gmp-${VERSION_GMP}/usr CFLAGS="-O2 -fomit-frame-pointer" CXXFLAGS="-O2 -fomit-frame-pointer" && \
-	$(MAKE) $(OUT) && \
-	$(MAKE) install-strip
-
-gmp-atari: gmp-${VERSION_GMP}-${CPU}-atari
-
-mpfr-${VERSION_MPFR}-${CPU}-atari: mpfr-${TARGET}
-	mkdir -p $@
-	cd $@ && \
-	export PATH=${INSTALL_DIR}/bin:$$PATH && \
-	../mpfr-${VERSION_MPFR}/configure --host=${TARGET} --with-gmp=${PWD}/binary-package/${CPU}/gmp-${VERSION_GMP}/usr --prefix=${PWD}/binary-package/${CPU}/mpfr-${VERSION_MPFR}/usr CFLAGS="-O2 -fomit-frame-pointer" CXXFLAGS="-O2 -fomit-frame-pointer" && \
-	$(MAKE) $(OUT) && \
-	$(MAKE) install-strip
-
-mpfr-atari: gmp-atari mpfr-${VERSION_MPFR}-${CPU}-atari
-
-mpc-${VERSION_MPC}-${CPU}-atari: mpc-${TARGET}
-	mkdir -p $@
-	cd $@ && \
-	export PATH=${INSTALL_DIR}/bin:$$PATH && \
-	../mpc-${VERSION_MPC}/configure --host=${TARGET} --with-gmp=${PWD}/binary-package/${CPU}/gmp-${VERSION_GMP}/usr --with-mpfr=${PWD}/binary-package/${CPU}/mpfr-${VERSION_MPFR}/usr --prefix=${PWD}/binary-package/${CPU}/mpc-${VERSION_MPC}/usr CFLAGS="-O2 -fomit-frame-pointer" CXXFLAGS="-O2 -fomit-frame-pointer" --disable-shared && \
-	$(MAKE) $(OUT) && \
-	$(MAKE) install-strip
-
-mpc-atari: mpfr-atari mpc-${VERSION_MPC}-${CPU}-atari
-
 gcc-${VERSION_GCC}-${CPU}-atari: gcc-${TARGET}
 	mkdir -p $@
 	cd $@ && PATH=${INSTALL_DIR}/bin:$$PATH ../gcc-${VERSION_GCC}/configure \
@@ -376,22 +362,16 @@ gcc-${VERSION_GCC}-${CPU}-atari: gcc-${TARGET}
 		--enable-c99 \
 		--enable-long-long \
 		--disable-libstdcxx-pch \
-		--with-gmp=${PWD}/binary-package/${CPU}/gmp-${VERSION_GMP}/usr \
-		--with-mpfr=${PWD}/binary-package/${CPU}/mpfr-${VERSION_MPFR}/usr \
-		--with-mpc=${PWD}/binary-package/${CPU}/mpc-${VERSION_MPC}/usr \
 		CFLAGS="-O2 -fomit-frame-pointer" CXXFLAGS="-O2 -fomit-frame-pointer" --with-cpu=${CPU}
 	cd $@ && $(MAKE) -j3 $(OUT)
 	cd $@ && $(MAKE) install-strip DESTDIR=${PWD}/binary-package/${CPU}/gcc-${VERSION_GCC} $(OUT)
 
-gcc-atari: mpc-atari gcc-${VERSION_GCC}-${CPU}-atari
+gcc-atari: gcc-${VERSION_GCC}-${CPU}-atari
 
 # Cleaning
 
 clean-source:
 	rm -rf binutils-${VERSION_BINUTILS}
-	rm -rf gmp-${VERSION_GMP}
-	rm -rf mpfr-${VERSION_MPFR}
-	rm -rf mpc-${VERSION_MPC}
 	rm -rf gcc-${VERSION_GCC}
 	for dir in $$(ls | grep mintlib-CVS-????????); \
 	do \
@@ -408,7 +388,7 @@ clean-cross:
 	rm -rf gcc-${VERSION_GCC}-${CPU}-cross-final
 
 pack-atari:
-	for dir in binutils-${VERSION_BINUTILS} gmp-${VERSION_GMP} mpfr-${VERSION_MPFR} mpc-${VERSION_MPC} gcc-${VERSION_GCC}; \
+	for dir in binutils-${VERSION_BINUTILS} gcc-${VERSION_GCC}; \
 	do \
 		cd ${PWD}/binary-package/${CPU}/$$dir && tar cjf ../$$dir-${CPU}mint.tar.bz2 usr && cd ..; \
 	done
@@ -419,8 +399,15 @@ strip-atari:
 
 clean-atari:
 	rm -rf binutils-${VERSION_BINUTILS}-${CPU}-atari
-	rm -rf gmp-${VERSION_GMP}-${CPU}-atari
-	rm -rf mpfr-${VERSION_MPFR}-${CPU}-atari
-	rm -rf mpc-${VERSION_MPC}-${CPU}-atari
 	rm -rf gcc-${VERSION_GCC}-${CPU}-atari
 	rm -rf binary-package
+
+# setup
+
+SH	= $(shell which sh)
+BASH	= $(shell which bash)
+URLGET	= $(shell which wget || echo "`which curl` -O")
+
+# set to something like "> /dev/null" or ">> /tmp/mint-build.log"
+# to redirect compilation standard output
+OUT =
