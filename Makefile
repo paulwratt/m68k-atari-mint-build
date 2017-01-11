@@ -1,19 +1,41 @@
 # Atari cross- and native-binutils/gcc toolchain build Makefile
 # Miro Kropacek aka MiKRO / Mystic Bytes
 # miro.kropacek@gmail.com
-# version 3.0.0 (2017/01/04)
+# version 4.0.0 (2017/0x/0x)
 
 # please note you need the bash shell for correct compilation of mintlib.
 
-TARGET			= m68k-atari-mint
+####################
+# Global definitions
+####################
 
-VERSION_BINUTILS	= 2.26
-VERSION_GCC		= 4.6.4
+TARGET			:= m68k-atari-mint
+LIBC			:= mintlib
+LIBM			:= pml
+
+VERSION_BINUTILS	:= 2.26
+VERSION_GCC		:= 4.6.4
+VERSION_PML		:= 2.03
+VERSION_MINTLIB		:= $(shell date +"%Y%m%d")
+
+ifeq (${LIBC}, mintlib)
+LIBC_TARGET = mintlib-CVS-${VERSION_MINTLIB}
+#else
+#ifeq (${LIBC}, libcmini)
+#endif
+endif
+
+ifeq (${LIBM}, pml)
+LIBM_TARGET = pml-${VERSION_PML}
+#else
+#ifeq (${LIBM}, fdlibm)
+#endif
+endif
 
 # todo: nejako detekovat zmenu platformy... pri gcc/binutils touch ${TARGET}_source.ok a ak sa nenachadza, tak rm -rf
 # detekovat, ci je platforma dobre definovana (na targets?)
 
-# each platform target has to provide:
+# each platform target must provide:
 # ${TARGET}-binutils-${VERSION_BINUTILS}-{download_patch, apply_patch}
 # ${TARGET}-gcc-${VERSION_GCC}-{download_patch, apply_patch}
 # ${TARGET}-{libc, libm}-{download, build}
@@ -26,108 +48,55 @@ M68K_ATARI_MINT_PATCH_BINUTILS	= 20160320
 M68K_ATARI_MINT_PATCH_GCC	= 20130415
 M68K_ATARI_MINT_PATCH_PML	= 20110207
 
-M68K_ATARI_MINT_VERSION_PML	= 2.03
-M68K_ATARI_MINT_VERSION_MINTLIB	:= $(shell date +"%Y%m%d")
 M68K_ATARI_MINT_VERSION_MINTBIN	= 20110527
 
 # helper targets
 
-ach dopekla, target je target/xxx ale my sa odkazujeme na $@
 ${TARGET}/binutils-${VERSION_BINUTILS}-mint-${M68K_ATARI_MINT_PATCH_BINUTILS}.patch.bz2: ${TARGET}
 	cd ${TARGET} && \
-	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$@
+	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$(notdir $@)
 
 ${TARGET}/gcc-${VERSION_GCC}-mint-${M68K_ATARI_MINT_PATCH_GCC}.patch.bz2: ${TARGET}
 	cd ${TARGET} && \
-	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$@
+	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$(notdir $@)
 
-${TARGET}/pml-${VERSION_PML}.tar.bz2: ${TARGET}
-	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$@
+${TARGET}/pml-${VERSION_PML}-mint-${M68K_ATARI_MINT_PATCH_PML}.patch.bz2:
+	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$(notdir $@)
 
 ${TARGET}/mintbin-CVS-${VERSION_MINTBIN}.tar.gz: ${TARGET}
-	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$@
-
-
-
-${TARGET}/mintlib-CVS-${M68K_ATARI_MINT_VERSION_MINTLIB}.ok: mintlib.patch
-	rm -rf $@ ${TARGET}/mintlib-CVS-${M68K_ATARI_MINT_VERSION_MINTLIB}
 	cd ${TARGET} && \
-	CVSROOT=:pserver:cvsanon:cvsanon@sparemint.org:/mint cvs checkout -d mintlib-CVS-${VERSION_MINTLIB} mintlib $(OUT)
-	cd ${TARGET}/mintlib-CVS-${M68K_ATARI_MINT_VERSION_MINTLIB} && patch -p1 < ../../mintlib.patch
-	touch $@
+	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$(notdir $@)
 
-${TARGET}/mintbin-CVS-${M68K_ATARI_MINT_VERSION_MINTBIN}.ok: mintbin-CVS-${M68K_ATARI_MINT_VERSION_MINTBIN}.tar.gz mintbin.patch
+${TARGET}/mintbin-CVS-${M68K_ATARI_MINT_VERSION_MINTBIN}.depacked: ${TARGET}/mintbin-CVS-${M68K_ATARI_MINT_VERSION_MINTBIN}.tar.gz ${TARGET}/mintbin.patch
 	rm -rf $@ ${TARGET}/mintbin-CVS-${M68K_ATARI_MINT_VERSION_MINTBIN}
 	cd ${TARGET} && \
-	tar xzf xxxxxxxmintbin-CVS-${M68K_ATARI_MINT_VERSION_MINTBIN}.tar.gz
+	tar xzf mintbin-CVS-${M68K_ATARI_MINT_VERSION_MINTBIN}.tar.gz
 	cd ${TARGET}/mintbin-CVS-${M68K_ATARI_MINT_VERSION_MINTBIN} && patch -p1 < ../mintbin.patch
-	touch $@
-
-${TARGET}/pml-${VERSION_PML}.ok: pml-${VERSION_PML}.tar.bz2 pml-${VERSION_PML}-mint-${PATCH_PML}.patch.bz2 pml-${VERSION_PML}-mint-${PATCH_PML}.patch.bz2
-	rm -rf pml-${VERSION_PML} $@
-	tar xjf pml-${VERSION_PML}.tar.bz2
-	cd pml-${VERSION_PML} && bzcat ../pml-${VERSION_PML}-mint-${PATCH_PML}.patch.bz2 | patch -p1
-	cd pml-${VERSION_PML} && cat ../pml.patch | patch -p1
 	touch $@
 
 # main targets
 
 m68k-atari-mint-binutils-${VERSION_BINUTILS}-download_patch: ${TARGET}/binutils-${VERSION_BINUTILS}-mint-${M68K_ATARI_MINT_PATCH_BINUTILS}.patch.bz2
 
-m68k-atari-mint-binutils-${VERSION_BINUTILS}-apply_patch: m68k-atari-mint-binutils-${VERSION_BINUTILS}-download_patch binutils-{VERSION_BINUTILS}.${TARGET}_source_ok
+m68k-atari-mint-binutils-${VERSION_BINUTILS}-apply_patch: m68k-atari-mint-binutils-${VERSION_BINUTILS}-download_patch binutils-${VERSION_BINUTILS}.depacked
 	cd binutils-${VERSION_BINUTILS} && bzcat ../${TARGET}/binutils-${VERSION_BINUTILS}-mint-${M68K_ATARI_MINT_PATCH_BINUTILS}.patch.bz2 | patch -p1
-	touch binutils-${VERSION_BINUTILS}.${TARGET}_patch_ok
 
 m68k-atari-mint-gcc-${VERSION_GCC}-download_patch: ${TARGET}/gcc-${VERSION_GCC}-mint-${M68K_ATARI_MINT_PATCH_GCC}.patch.bz2
 
-m68k-atari-mint-gcc-${VERSION_GCC}-apply_patch: m68k-atari-mint-gcc-${VERSION_GCC}-download_patch gcc-${VERSION_GCC}.${TARGET}_source_ok
+m68k-atari-mint-gcc-${VERSION_GCC}-apply_patch: m68k-atari-mint-gcc-${VERSION_GCC}-download_patch gcc-${VERSION_GCC}.depacked
 	cd gcc-${VERSION_GCC} && patch -p1 < ../gcc.patch
 	cd gcc-${VERSION_GCC} && bzcat ../${TARGET}/gcc-${VERSION_GCC}-mint-${M68K_ATARI_MINT_PATCH_GCC}.patch.bz2 | patch -p1
-	touch gcc-${VERSION_GCC}.${TARGET}_patch_ok
 
-m68k-atari-mint-libc-download: ${TARGET}/mintlib-CVS-${M68K_ATARI_MINT_VERSION_MINTLIB}.ok
-m68k-atari-mint-libc-build:
-libc.m68k-atari-mint_ok:
-
-
-m68k-atari-mint-libm-download:
-m68k-atari-mint-libm-build:
-libm.m68k-atari-mint_ok:
-
-
-
-
-pml-${VERSION_PML}-mint-${PATCH_PML}.patch.bz2:
-	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$@
-
-
-
-	binutils-${VERSION_BINUTILS}.ok: binutils-${VERSION_BINUTILS}.tar.bz2 binutils-${VERSION_BINUTILS}-mint-${PATCH_BINUTILS}.patch.bz2
-	rm -rf binutils-${VERSION_BINUTILS} $@
-	tar xjf binutils-${VERSION_BINUTILS}.tar.bz2
-	cd binutils-${VERSION_BINUTILS} && bzcat ../binutils-${VERSION_BINUTILS}-mint-${PATCH_BINUTILS}.patch.bz2 | patch -p1
-	touch $@
-
-
-
-
-
-{TARGET}:
-	mkdir -p $@
-
-
-
-
-# m68k-atari-linux-elf
-
-
-DOWNLOADS = binutils-${VERSION_BINUTILS}.tar.bz2 gcc-${VERSION_GCC}.tar.bz2 \
-	    binutils-${VERSION_BINUTILS}-mint-${PATCH_BINUTILS}.patch.bz2 \
-	    gcc-${VERSION_GCC}-mint-${PATCH_GCC}.patch.bz2 \
+DOWNLOADS = binutils-${VERSION_BINUTILS}.tar.bz2 gcc-${VERSION_GCC}.tar.bz2
+	\
 
 ${TARGET}-DOWNLOADS:
 	pml-${VERSION_PML}.tar.bz2 mintbin-CVS-${VERSION_MINTBIN}.tar.gz \
 	pml-${VERSION_PML}-mint-${PATCH_PML}.patch.bz2
+
+################
+# User interface
+################
 
 .PHONY: help download clean \
 	clean-all       clean-all-skip-native       clean-native           all       all-skip-native       all-native \
@@ -148,90 +117,81 @@ help: ./build.sh
 
 # "real" targets
 
-all: ./build.sh $(DOWNLOADS_ALL)
-	MAKE=$(MAKE) $(SH) $< --all
+all: ./build.sh download
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --all
 
-all-skip-native: ./build.sh $(DOWNLOADS_CROSS)
-	MAKE=$(MAKE) $(SH) $< --all --skip-native
+all-skip-native: ./build.sh download
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --all --skip-native
 
-all-native: ./build.sh $(DOWNLOADS_NATIVE)
-	MAKE=$(MAKE) $(SH) $< --all --native-only
+all-native: ./build.sh download
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --all --native-only
 
-m68000: ./build.sh $(DOWNLOADS_ALL)
-	MAKE=$(MAKE) $(SH) $< m68000
+m68000: ./build.sh download
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< m68000
 
-m68000-skip-native: ./build.sh $(DOWNLOADS_CROSS)
-	MAKE=$(MAKE) $(SH) $< --skip-native m68000
+m68000-skip-native: ./build.sh download
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --skip-native m68000
 
-m68000-native: ./build.sh $(DOWNLOADS_NATIVE)
-	MAKE=$(MAKE) $(SH) $< --native-only m68000
+m68000-native: ./build.sh download
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --native-only m68000
 
-m68020-60: ./build.sh $(DOWNLOADS_ALL)
-	MAKE=$(MAKE) $(SH) $< m68020-60
+m68020-60: ./build.sh download
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< m68020-60
 
-m68020-60-skip-native: ./build.sh $(DOWNLOADS_CROSS)
-	MAKE=$(MAKE) $(SH) $< --skip-native m68020-60
+m68020-60-skip-native: ./build.sh download
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --skip-native m68020-60
 
-m68020-60-native: ./build.sh $(DOWNLOADS_NATIVE)
-	MAKE=$(MAKE) $(SH) $< --native-only m68020-60
+m68020-60-native: ./build.sh download
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --native-only m68020-60
 
-5475: ./build.sh $(DOWNLOADS_ALL)
-	MAKE=$(MAKE) $(SH) $< 5475
+5475: ./build.sh download
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< 5475
 
-5475-skip-native: ./build.sh $(DOWNLOADS_CROSS)
-	MAKE=$(MAKE) $(SH) $< --skip-native 5475
+5475-skip-native: ./build.sh download
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --skip-native 5475
 
-5475-native: ./build.sh $(DOWNLOADS_NATIVE)
-	MAKE=$(MAKE) $(SH) $< --native-only 5475
+5475-native: ./build.sh download
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --native-only 5475
 
 clean: clean-all
 
 clean-all: ./build.sh clean-source
-	MAKE=$(MAKE) $(SH) $< --clean --all
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --clean --all
 
 clean-all-skip-native: ./build.sh clean-source
-	MAKE=$(MAKE) $(SH) $< --clean --all --skip-native
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --clean --all --skip-native
 
 clean-all-native: ./build.sh clean-source
-	MAKE=$(MAKE) $(SH) $< --clean --all --native-only
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --clean --all --native-only
 
 clean-m68000: ./build.sh clean-source
-	MAKE=$(MAKE) $(SH) $< --clean m68000
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --clean m68000
 
 clean-m68000-skip-native: ./build.sh clean-source
-	MAKE=$(MAKE) $(SH) $< --clean --skip-native m68000
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --clean --skip-native m68000
 
 clean-m68000-native: ./build.sh clean-source
-	MAKE=$(MAKE) $(SH) $< --clean --native-only m68000
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --clean --native-only m68000
 
 clean-m68020-60: ./build.sh clean-source
-	MAKE=$(MAKE) $(SH) $< --clean m68020-60
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --clean m68020-60
 
 clean-m68020-60-skip-native: ./build.sh clean-source
-	MAKE=$(MAKE) $(SH) $< --clean --skip-native m68020-60
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --clean --skip-native m68020-60
 
 clean-m68020-60-native: ./build.sh clean-source
-	MAKE=$(MAKE) $(SH) $< --clean --native-only m68020-60
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --clean --native-only m68020-60
 
 clean-5475: ./build.sh clean-source
-	MAKE=$(MAKE) $(SH) $< --clean 5475
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --clean 5475
 
 clean-5475-skip-native: ./build.sh clean-source
-	MAKE=$(MAKE) $(SH) $< --clean --skip-native 5475
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --clean --skip-native 5475
 
 clean-5475-native: ./build.sh clean-source
-	MAKE=$(MAKE) $(SH) $< --clean --native-only 5475
+	PLATFORM=$(TARGET) MAKE=$(MAKE) $(SH) $< --clean --native-only 5475
 
-download: $(DOWNLOADS_ALL)
-
-# Download libraries
-
-binutils-${VERSION_BINUTILS}.tar.bz2:
-	$(URLGET) http://ftp.gnu.org/gnu/binutils/$@
-
-gcc-${VERSION_GCC}.tar.bz2:
-	$(URLGET) http://ftp.gnu.org/gnu/gcc/gcc-${VERSION_GCC}/$@
-
+download: $(DOWNLOADS) m68k-atari-mint-binutils-${VERSION_BINUTILS}-download_patch
 
 # Target definitions for every new platform (m68k-linux-gnu for instance)
 # right now we don't support building of more than one targets in one go so don't forget 'make clean-source'
@@ -245,32 +205,91 @@ gcc-m68k-atari-mint: gcc-${VERSION_GCC}.ok
 
 libc-m68k-atari-mint: pml-${VERSION_PML}.ok mintbin-CVS-${VERSION_MINTBIN}.ok mintlib-CVS-${VERSION_MINTLIB}.ok
 
-# Depacking and patching
+##############
+# Shared rules
+##############
 
-binutils-${VERSION_BINUTILS}.ok: binutils-${VERSION_BINUTILS}.tar.bz2 binutils-${VERSION_BINUTILS}-mint-${PATCH_BINUTILS}.patch.bz2
-	rm -rf binutils-${VERSION_BINUTILS} $@
+ifndef (${LIBC_TARGET})
+	$(error Please add LIBC_TARGET rules for ${LIBC})
+endif
+ifndef (${LIBM_TARGET})
+	$(error Please add LIBM_TARGET rules for ${LIBM})
+endif
+
+# Download source archives
+
+binutils-${VERSION_BINUTILS}.tar.bz2:
+	$(URLGET) http://ftp.gnu.org/gnu/binutils/$@
+
+gcc-${VERSION_GCC}.tar.bz2:
+	$(URLGET) http://ftp.gnu.org/gnu/gcc/gcc-${VERSION_GCC}/$@
+
+pml-${VERSION_PML}.tar.bz2:
+	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$@
+
+# Depack
+
+binutils-${VERSION_BINUTILS}.depacked: binutils-${VERSION_BINUTILS}.tar.bz2
+	rm -rf $@ binutils-${VERSION_BINUTILS}
 	tar xjf binutils-${VERSION_BINUTILS}.tar.bz2
-	cd binutils-${VERSION_BINUTILS} && bzcat ../binutils-${VERSION_BINUTILS}-mint-${PATCH_BINUTILS}.patch.bz2 | patch -p1
 	touch $@
 
-gcc-${VERSION_GCC}.ok: gcc-${VERSION_GCC}.tar.bz2 gcc.patch gcc-${VERSION_GCC}-mint-${PATCH_GCC}.patch.bz2
-	rm -rf gcc-${VERSION_GCC}.ok $@
+gcc-${VERSION_GCC}.depacked: gcc-${VERSION_GCC}.tar.bz2
+	rm -rf $@ gcc-${VERSION_GCC}
 	tar xjf gcc-${VERSION_GCC}.tar.bz2
-	cd gcc-${VERSION_GCC} && patch -p1 < ../gcc.patch
-	cd gcc-${VERSION_GCC} && bzcat ../gcc-${VERSION_GCC}-mint-${PATCH_GCC}.patch.bz2 | patch -p1
 	touch $@
 
-# Building
+mintlib-CVS-${VERSION_MINTLIB}.depacked:
+	rm -rf $@ ${TARGET}/mintlib-CVS-${VERSION_MINTLIB}
+	CVSROOT=:pserver:cvsanon:cvsanon@sparemint.org:/mint cvs checkout -d mintlib-CVS-${VERSION_MINTLIB} mintlib $(OUT)
+	touch $@
 
-binutils-${VERSION_BINUTILS}-${CPU}-cross: binutils-${TARGET}
+pml-${VERSION_PML}.depacked: pml-${VERSION_PML}.tar.bz2
+	rm -rf $@ pml-${VERSION_PML}
+	tar xjf pml-${VERSION_PML}.tar.bz2
+	touch $@
+
+# Patch for given platform
+
+binutils-${VERSION_BINUTILS}.patched: binutils-${VERSION_BINUTILS}.depacked ${TARGET}-binutils-${VERSION_BINUTILS}-apply_patch
+	touch $@
+
+gcc-${VERSION_GCC}.patched: gcc-${VERSION_GCC}.depacked ${TARGET}-gcc-${VERSION_GCC}-apply_patch
+	touch $@
+
+mintlib-CVS-${VERSION_MINTLIB}.patched: mintlib-CVS-${VERSION_MINTLIB}.depacked ${TARGET}-mintlib-CVS-${VERSION_MINTLIB}-apply_patch
+	touch $@
+
+pml-${VERSION_PML}.patched: pml-${VERSION_PML}.depacked ${TARGET}-pml-${VERSION_PML}-apply_patch
+	touch $@
+
+# Shortcuts (called from build.sh)
+
+binutils: binutils-${VERSION_BINUTILS}-${CPU}-cross
+
+gcc-preliminary: gcc-${VERSION_GCC}-${CPU}-cross-preliminary
+
+libc: ${LIBC_TARGET}.built
+
+libm: ${LIBM_TARGET}.built
+
+gcc: gcc-${VERSION_GCC}-${CPU}-cross-final
+
+misc: ${TARGET}-misc.built
+
+# Build
+
+binutils-${VERSION_BINUTILS}-${CPU}-cross: binutils-${VERSION_BINUTILS}.patched
 	mkdir -p $@
 	cd $@ && PATH=${INSTALL_DIR}/bin:$$PATH ../binutils-${VERSION_BINUTILS}/configure --target=${TARGET} --prefix=${INSTALL_DIR} --disable-nls --disable-werror
 	cd $@ && $(MAKE) -j3 $(OUT)
 	cd $@ && $(MAKE) install-strip $(OUT)
 
-binutils: binutils-${VERSION_BINUTILS}-${CPU}-cross
+gcc-multilib-patch: gcc-${VERSION_GCC}.patched
+	sed -e "s:\(MULTILIB_OPTIONS =\).*:\1 ${OPTS}:" -e "s:\(MULTILIB_DIRNAMES =\).*:\1 ${DIRS}:" gcc-${VERSION_GCC}/gcc/config/m68k/t-mint > t-mint.patched
+	mv t-mint.patched gcc-${VERSION_GCC}/gcc/config/m68k/t-mint
 
-gcc-${VERSION_GCC}-${CPU}-cross-preliminary: gcc-${TARGET}
+gcc-${VERSION_GCC}-${CPU}-cross-preliminary: gcc-${VERSION_GCC}.patched
 	mkdir -p $@
 	ln -sfv . ${INSTALL_DIR}/${TARGET}/usr
 	cd $@ && PATH=${INSTALL_DIR}/bin:$$PATH ../gcc-${VERSION_GCC}/configure \
@@ -293,14 +312,6 @@ gcc-${VERSION_GCC}-${CPU}-cross-preliminary: gcc-${TARGET}
 		--disable-libstdcxx-pch
 	cd $@ && $(MAKE) -j3 all-gcc all-target-libgcc $(OUT)
 	cd $@ && $(MAKE) install-gcc install-target-libgcc $(OUT)
-
-# Shortcuts
-
-gcc-multilib-patch: gcc-${TARGET}
-	sed -e "s:\(MULTILIB_OPTIONS =\).*:\1 ${OPTS}:" -e "s:\(MULTILIB_DIRNAMES =\).*:\1 ${DIRS}:" gcc-${VERSION_GCC}/gcc/config/m68k/t-mint > t-mint.patched
-	mv t-mint.patched gcc-${VERSION_GCC}/gcc/config/m68k/t-mint
-
-gcc-preliminary: gcc-${VERSION_GCC}-${CPU}-cross-preliminary
 
 mintlib: libc-${TARGET}
 	cd mintlib-CVS-${VERSION_MINTLIB} && $(MAKE) OUT= clean $(OUT)
@@ -337,9 +348,9 @@ gcc-${VERSION_GCC}-${CPU}-cross-final: ${INSTALL_DIR}/${TARGET}/lib/libc.a ${INS
 	cd $@ && $(MAKE) -j3 $(OUT)
 	cd $@ && $(MAKE) install-strip $(OUT)
 
-gcc: gcc-${VERSION_GCC}-${CPU}-cross-final
-
-# Atari building
+##############
+# Native build
+##############
 
 binutils-${VERSION_BINUTILS}-${CPU}-atari: binutils-${TARGET}
 	mkdir -p $@

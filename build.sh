@@ -73,22 +73,23 @@ do
 			multilib_dirs="$(echo $CPU_DIRS | sed "s/${dir}//;" | xargs) mshort"
 			${MAKE} gcc-multilib-patch OPTS="$multilib_opts" DIRS="$multilib_dirs" || exit 1
 
-			${MAKE} binutils gcc-preliminary mintbin INSTALL_DIR="$INSTALL_DIR/$dir" CPU="$cpu" || exit 1
+			${MAKE} binutils gcc-preliminary INSTALL_DIR="$INSTALL_DIR/$dir" CPU="$cpu" || exit 1
 
-			# build mintlib and pml for all targets
+			# build libc and libm for all targets
 			for j in $indices_all
 			do
 				target=$(echo $CPU_DIRS | cut -d ' ' -f $j)
-				prefix="$INSTALL_DIR/$dir/m68k-atari-mint"
+				prefix="$INSTALL_DIR/$dir/$PLATFORM
 				if [ "$target" = "$dir" ]
 				then
 					target=""
 				fi
 				opts=$(echo $CPU_OPTS | cut -d ' ' -f $j)
-				${MAKE} mintlib prefix="$prefix" libdir="$prefix/lib/$target" cflags="-$opts" INSTALL_DIR="$INSTALL_DIR/$dir" CPU="$cpu" || exit 1
-				${MAKE} pml OPTS="-$opts" DIR="$target" INSTALL_DIR="$INSTALL_DIR/$dir" CPU="$cpu" || exit 1
+				${MAKE} libc prefix="$prefix" libdir="$prefix/lib/$target" cflags="-$opts" INSTALL_DIR="$INSTALL_DIR/$dir" CPU="$cpu" || exit 1
+				${MAKE} libm OPTS="-$opts" DIR="$target" INSTALL_DIR="$INSTALL_DIR/$dir" CPU="$cpu" || exit 1
 			done
 			${MAKE} gcc INSTALL_DIR="$INSTALL_DIR/$dir" CPU="$cpu" || exit 1
+			${MAKE} misc INSTALL_DIR="$INSTALL_DIR/$dir" CPU="$cpu" || exit 1
 		fi
 
 		if [ $skip_native -eq 0 ] ; then
