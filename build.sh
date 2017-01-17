@@ -69,13 +69,15 @@ do
 
 	if [ $clean -eq 0 ]; then
 		if [ $native_only -eq 0 ] ; then
+			# default code generation and library prefix for gcc
 			multilib_opts="$(echo $CPU_OPTS | sed "s/${opt}//;" | xargs | tr ' ' '/') mshort"
 			multilib_dirs="$(echo $CPU_DIRS | sed "s/${dir}//;" | xargs) mshort"
 			${MAKE} gcc-multilib-patch OPTS="$multilib_opts" DIRS="$multilib_dirs" || exit 1
 
+			# binutils and preliminary gcc
 			${MAKE} binutils gcc-preliminary INSTALL_DIR="$INSTALL_DIR/$dir" CPU="$cpu" || exit 1
 
-			# build libc and libm for all targets
+			# libc and libm for all known targets (<prefix>/lib/$target)
 			for j in $indices_all
 			do
 				target=$(echo $CPU_DIRS | cut -d ' ' -f $j)
@@ -88,7 +90,11 @@ do
 				${MAKE} libc prefix="$prefix" libdir="$prefix/lib/$target" cflags="-$opts" INSTALL_DIR="$INSTALL_DIR/$dir" CPU="$cpu" || exit 1
 				${MAKE} libm OPTS="-$opts" DIR="$target" INSTALL_DIR="$INSTALL_DIR/$dir" CPU="$cpu" || exit 1
 			done
+
+			# full gcc
 			${MAKE} gcc INSTALL_DIR="$INSTALL_DIR/$dir" CPU="$cpu" || exit 1
+
+			# misc tools
 			${MAKE} misc INSTALL_DIR="$INSTALL_DIR/$dir" CPU="$cpu" || exit 1
 		fi
 

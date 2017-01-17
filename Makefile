@@ -63,7 +63,7 @@ ${TARGET}/gcc-${VERSION_GCC}-mint-${M68K_ATARI_MINT_PATCH_GCC}.patch.bz2: ${TARG
 ${TARGET}/pml-${VERSION_PML}-mint-${M68K_ATARI_MINT_PATCH_PML}.patch.bz2:
 	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$(notdir $@)
 
-${TARGET}/mintbin-CVS-${VERSION_MINTBIN}.tar.gz: ${TARGET}
+${TARGET}/mintbin-CVS-${M68K_ATARI_MINT_VERSION_MINTBIN}.tar.gz: ${TARGET}
 	cd ${TARGET} && \
 	$(URLGET) http://vincent.riviere.free.fr/soft/m68k-atari-mint/archives/$(notdir $@)
 
@@ -269,8 +269,10 @@ binutils: binutils-${VERSION_BINUTILS}-${CPU}-cross
 
 gcc-preliminary: gcc-${VERSION_GCC}-${CPU}-cross-preliminary
 
+# TODO: prefix="$prefix" libdir="$prefix/lib/$target" cflags="-$opts"
 libc: ${LIBC_TARGET}.built
 
+# TODO: OPTS="-$opts" DIR="$target"
 libm: ${LIBM_TARGET}.built
 
 gcc: gcc-${VERSION_GCC}-${CPU}-cross-final
