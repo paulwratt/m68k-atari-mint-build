@@ -11,11 +11,11 @@ REPOSITORY_MINTLIB	= mintlib
 
 GITHUB_URL_BINUTILS	= https://github.com/mikrosk/${REPOSITORY_BINUTILS}/archive
 GITHUB_URL_GCC		= https://github.com/mikrosk/${REPOSITORY_GCC}/archive
-GITHUB_URL_MINTLIB	= https://github.com/freemint/${REPOSITORY_MINTLIB}/archive
+GITHUB_URL_MINTLIB	= https://github.com/mikrosk/${REPOSITORY_MINTLIB}/archive
 
-BRANCH_BINUTILS		= binutils-2_28-mint
-BRANCH_GCC		= gcc-7-mint
-BRANCH_MINTLIB		= master
+BRANCH_BINUTILS		= binutils-2_28-mintelf-thorsten
+BRANCH_GCC		= gcc-7-mintelf
+BRANCH_MINTLIB		= gcc7
 
 ARCHIVE_BINUTILS	= ${BRANCH_BINUTILS}.zip
 ARCHIVE_GCC		= ${BRANCH_GCC}.zip
@@ -28,7 +28,7 @@ FOLDER_MINTLIB		= ${REPOSITORY_MINTLIB}-${BRANCH_MINTLIB}
 PATCH_PML		= 20110207
 
 VERSION_BINUTILS	= 2.28
-VERSION_GCC		= 7.1.0
+VERSION_GCC		= 7.2.0
 
 VERSION_PML		= 2.03
 VERSION_MINTBIN		= 20110527
@@ -170,15 +170,15 @@ pml-${VERSION_PML}-mint-${PATCH_PML}.patch.bz2:
 
 .PHONY: binutils-m68k-atari-mint.ok gcc-m68k-atari-mint.ok libc-m68k-atari-mint.ok
 
-binutils-m68k-atari-mint.ok: binutils-${VERSION_BINUTILS}.ok
+binutils-m68k-atari-mintelf.ok: binutils-${VERSION_BINUTILS}.ok
 	# target specific patches here
 	touch $@
 
-gcc-m68k-atari-mint.ok: gcc-${VERSION_GCC}.ok
+gcc-m68k-atari-mintelf.ok: gcc-${VERSION_GCC}.ok
 	# target specific patches here
 	touch $@
 
-libc-m68k-atari-mint.ok: pml-${VERSION_PML}.ok mintbin-CVS-${VERSION_MINTBIN}.ok mintlib.ok
+libc-m68k-atari-mintelf.ok: pml-${VERSION_PML}.ok mintbin-CVS-${VERSION_MINTBIN}.ok mintlib.ok
 	# target specific patches here
 	touch $@
 
@@ -251,11 +251,14 @@ gcc-${VERSION_GCC}-${CPU}-cross-preliminary.ok: gcc-${TARGET}.ok
 		--disable-libatomic \
 		--disable-libquadmath \
 		--disable-threads \
-		--enable-languages=c \
+		--enable-languages="c" \
 		--disable-multilib \
 		--disable-libstdcxx-pch && \
 	$(MAKE) -j3 all-gcc all-target-libgcc $(OUT) && \
-	$(MAKE) install-gcc install-target-libgcc $(OUT)
+	$(MAKE) install-gcc install-target-libgcc $(OUT) && \
+	mkdir -p ${INSTALL_DIR}/lib/bfd-plugins && \
+	cd ${INSTALL_DIR}/lib/bfd-plugins && \
+	ln -s ../../libexec/gcc/${TARGET}/${VERSION_GCC}/liblto_plugin.so
 	touch $@
 
 # Shortcuts
@@ -274,7 +277,7 @@ mintlib: libc-${TARGET}.ok
 	cd ${FOLDER_MINTLIB} && $(MAKE) OUT= clean $(OUT)
 	cd ${FOLDER_MINTLIB} && \
 		export PATH=${INSTALL_DIR}/bin:$$PATH && \
-		$(MAKE) OUT= toolprefix=${TARGET}- SHELL=$(BASH) CROSS=yes WITH_020_LIB=no WITH_V4E_LIB=no CC="${TARGET}-gcc" HOST_CC="$(CC)" $(OUT)
+		$(MAKE) OUT= toolprefix=${TARGET}- SHELL=$(BASH) CROSS=yes WITH_020_LIB=no WITH_V4E_LIB=no CC="${TARGET}-gcc -flto" HOST_CC="$(CC)" $(OUT)
 	cd ${FOLDER_MINTLIB} && \
 		export PATH=${INSTALL_DIR}/bin:$$PATH && \
 		$(MAKE) OUT= toolprefix=${TARGET}- SHELL=$(BASH) CROSS=yes WITH_020_LIB=no WITH_V4E_LIB=no install $(OUT)
@@ -282,19 +285,19 @@ mintlib: libc-${TARGET}.ok
 mintbin: libc-${TARGET}.ok
 	cd mintbin-CVS-${VERSION_MINTBIN} && \
 		export PATH=${INSTALL_DIR}/bin:$$PATH && \
-		./configure --target=${TARGET} --prefix=${INSTALL_DIR} --disable-nls
+		./configure --target=m68k-atari-mint --prefix=${INSTALL_DIR} --disable-nls
 	cd mintbin-CVS-${VERSION_MINTBIN} && $(MAKE) OUT= $(OUT)
 	cd mintbin-CVS-${VERSION_MINTBIN} && $(MAKE) OUT= install $(OUT)
-	mv -v ${INSTALL_DIR}/${TARGET}/bin/${TARGET}-* ${INSTALL_DIR}/bin
+	mv -v ${INSTALL_DIR}/m68k-atari-mint/bin/m68k-atari-mint-* ${INSTALL_DIR}/bin
 
 pml: libc-${TARGET}.ok
-	cd pml-${VERSION_PML}/pmlsrc && $(MAKE) clean LIB="$(DIR)" $(OUT)
-	cd pml-${VERSION_PML}/pmlsrc && \
-		export PATH=${INSTALL_DIR}/bin:$$PATH && \
-		$(MAKE) AR="${TARGET}-ar" CC="${TARGET}-gcc" CPU="$(OPTS)" CROSSDIR="${INSTALL_DIR}/${TARGET}" LIB="$(DIR)" $(OUT)
-	cd pml-${VERSION_PML}/pmlsrc && \
-		export PATH=${INSTALL_DIR}/bin:$$PATH && \
-		$(MAKE) install AR="${TARGET}-ar" CC="${TARGET}-gcc" CPU="$(OPTS)" CROSSDIR="${INSTALL_DIR}/${TARGET}" LIB="$(DIR)" $(OUT)
+	#cd pml-${VERSION_PML}/pmlsrc && $(MAKE) clean LIB="$(DIR)" $(OUT)
+	#cd pml-${VERSION_PML}/pmlsrc && \
+	#	export PATH=${INSTALL_DIR}/bin:$$PATH && \
+	#	$(MAKE) AR="${TARGET}-ar" CC="${TARGET}-gcc" CPU="$(OPTS)" CROSSDIR="${INSTALL_DIR}/${TARGET}" LIB="$(DIR)" $(OUT)
+	#cd pml-${VERSION_PML}/pmlsrc && \
+	#	export PATH=${INSTALL_DIR}/bin:$$PATH && \
+	#	$(MAKE) install AR="${TARGET}-ar" CC="${TARGET}-gcc" CPU="$(OPTS)" CROSSDIR="${INSTALL_DIR}/${TARGET}" LIB="$(DIR)" $(OUT)
 
 # Full build
 
