@@ -1,7 +1,7 @@
 # Atari cross- and native-binutils/gcc toolchain build Makefile
 # Miro Kropacek aka MiKRO / Mystic Bytes
 # miro.kropacek@gmail.com
-# version 3.1.0 (2017/09/22)
+# version 3.1.1 (2018/07/05)
 
 # please note you need the bash shell for correct compilation of mintlib.
 
@@ -13,7 +13,7 @@ GITHUB_URL_BINUTILS	= https://github.com/freemint/${REPOSITORY_BINUTILS}/archive
 GITHUB_URL_GCC		= https://github.com/mikrosk/${REPOSITORY_GCC}/archive
 GITHUB_URL_MINTLIB	= https://github.com/freemint/${REPOSITORY_MINTLIB}/archive
 
-BRANCH_BINUTILS		= binutils-2_28-mint
+BRANCH_BINUTILS		= binutils-2_30-mint
 BRANCH_GCC		= gcc-4_6-mint
 BRANCH_MINTLIB		= master
 
@@ -27,7 +27,7 @@ FOLDER_MINTLIB		= ${REPOSITORY_MINTLIB}-${BRANCH_MINTLIB}
 
 PATCH_PML		= 20110207
 
-VERSION_BINUTILS	= 2.28
+VERSION_BINUTILS	= 2.30
 VERSION_GCC		= 4.6.4
 
 VERSION_PML		= 2.03
@@ -225,7 +225,7 @@ binutils-${VERSION_BINUTILS}-${CPU}-cross.ok: binutils-${TARGET}.ok
 	export PATH=${INSTALL_DIR}/bin:$$PATH && \
 	../${FOLDER_BINUTILS}/configure --target=${TARGET} --prefix=${INSTALL_DIR} --disable-nls --disable-werror \
 					--disable-gdb --disable-libdecnumber --disable-readline --disable-sim && \
-	$(MAKE) -j3 $(OUT) && \
+	$(MAKE) -j $(OUT) && \
 	$(MAKE) install-strip $(OUT)
 	touch $@
 
@@ -255,7 +255,7 @@ gcc-${VERSION_GCC}-${CPU}-cross-preliminary.ok: gcc-${TARGET}.ok
 		--enable-languages=c \
 		--disable-multilib \
 		--disable-libstdcxx-pch && \
-	$(MAKE) -j3 all-gcc all-target-libgcc $(OUT) && \
+	$(MAKE) -j all-gcc all-target-libgcc $(OUT) && \
 	$(MAKE) install-gcc install-target-libgcc $(OUT)
 	touch $@
 
@@ -314,7 +314,7 @@ gcc-${VERSION_GCC}-${CPU}-cross-final.ok: ${INSTALL_DIR}/${TARGET}/lib/libc.a ${
 		--enable-long-long \
 		--disable-libstdcxx-pch \
 		--with-cpu=${CPU} && \
-	$(MAKE) -j3 $(OUT) && \
+	$(MAKE) -j $(OUT) && \
 	$(MAKE) install-strip $(OUT)
 	touch $@
 
@@ -334,7 +334,7 @@ binutils-${VERSION_BINUTILS}-${CPU}-atari.ok: binutils-${TARGET}.ok
 	export PATH=${INSTALL_DIR}/bin:$$PATH CFLAGS="-O2 -fomit-frame-pointer" CXXFLAGS="-O2 -fomit-frame-pointer" && \
 	../${FOLDER_BINUTILS}/configure --target=${TARGET} --host=${TARGET} --disable-nls --prefix=/usr \
 					--disable-gdb --disable-libdecnumber --disable-readline --disable-sim && \
-	$(MAKE) -j3 $(OUT) && \
+	$(MAKE) -j $(OUT) && \
 	$(MAKE) install DESTDIR=${PWD}/binary-package/${CPU}/binutils-${VERSION_BINUTILS}	# make install-strip doesn't work properly
 	touch $@
 
@@ -355,7 +355,7 @@ gcc-${VERSION_GCC}-${CPU}-atari.ok: gcc-${TARGET}.ok
 		--enable-long-long \
 		--disable-libstdcxx-pch \
 		 --with-cpu=${CPU} && \
-	$(MAKE) -j3 $(OUT) && \
+	$(MAKE) -j $(OUT) && \
 	$(MAKE) install-strip DESTDIR=${PWD}/binary-package/${CPU}/gcc-${VERSION_GCC} $(OUT)
 	touch $@
 
